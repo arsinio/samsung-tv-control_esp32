@@ -161,6 +161,14 @@ Running log for [plan.md](plan.md). Newest entries at the bottom of each section
   dropped, the macro's Up/Down/Enter go to the current input instead, and may
   be passed to the HDMI device over CEC (Enter = "select" on that device).
   Watch for this in the reliability runs.
+- 2026-10-23: **A Game Mode popup appears when switching to HDMI 2** (probably
+  the TV's auto game-mode detection for the device on that port). It appears with
+  a delay. The physical remote's Back closes it, but a network `KEY_RETURN`
+  sent 0.75 s or 1.5 s after Enter had no visible effect. A `KEY_EXIT` about
+  11 s after the switch had no confirmed result. **Dropped:** `--back` was
+  removed and the popup is left alone for now. If it becomes a problem, the
+  options are: Press/Release instead of Click, other key codes, or stop it at
+  the source (set HDMI 2's Device Type, or turn off Auto Game Mode on the TV).
 
 ## Reading the current input
 
