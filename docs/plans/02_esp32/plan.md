@@ -1,6 +1,6 @@
 # 02 — ESP32 controller (WT32-ETH01)
 
-**Status:** Draft · **Date:** 2026-10-23 · **Owner:** Christopher Armenio
+**Status:** Implemented, awaiting hardware · **Date:** 2026-10-23 · **Owner:** Christopher Armenio
 **Builds on:** [01_experimentation](../01_experimentation/plan.md) ([findings](../01_experimentation/findings.md))
 
 ## Goal
@@ -120,7 +120,7 @@ firmware/
 
 ## Phase 0 — Toolchain and board bring-up
 
-- [ ] Use ESP-IDF v5.2, already installed at `~/esp/v5.2/esp-idf`. Move to
+- [x] Use ESP-IDF v5.2, already installed at `~/esp/v5.2/esp-idf`. Move to
       v5.5 only if a bug forces it.
 - [ ] Wire the USB-TTL adapter, flash `hello_world`, confirm the serial monitor.
 - [ ] Record the board revision and confirm the Ethernet pins.
@@ -132,8 +132,9 @@ firmware/
 - Bring up the LAN8720 (`esp_eth_mac_new_esp32` + `esp_eth_phy_new_lan87xx`,
   external clock on GPIO0, power on GPIO16).
 - Run the Ethernet `esp_netif` as a DHCP server on a static `192.168.77.1/24`.
-  The pool is the single address `.10`, so the TV always gets `.10` without a
-  MAC pin. Lease 12 h.
+  The pool is `.10`–`.11` (esp_netif rejects a one-address pool). The server
+  hands out the first address first, so the TV gets `.10` without a MAC pin.
+  Lease 12 h.
 - Disable the router and DNS offers (`esp_netif_dhcps_option`), and keep
   `CONFIG_LWIP_IP_FORWARD=n`.
 - On link-up, probe with a few DHCP DISCOVERs before serving. If any server
@@ -204,7 +205,7 @@ firmware/
 |---|---|---|
 | ESP32 TLS can't handshake with the TV (ciphers, key size) | No control | Test early in Phase 3. Fallback: plain `ws://:8001`, if the TV allows remote control without TLS |
 | `KEY_SOURCE` dropped (seen once in PoC) | Up/Down/Enter go to the current input or its CEC device | Generous delays, timing logs, `cycle` fallback |
-| lwIP DHCP server quirks with `udhcpc` | No lease | A single-address pool; if that fails, port `dhcpd.py` onto a raw UDP socket |
+| lwIP DHCP server quirks with `udhcpc` | No lease | A minimal two-address pool; if that fails, port `dhcpd.py` onto raw frames |
 | Ethernet plugged into a real LAN | Rogue DHCP server | Pre-serve probe (Phase 1) |
 | Wi-Fi and TV subnets overlap | Routing confusion | Configurable subnet, boot-time check |
 | Unauthenticated API | Anyone on the LAN can switch while the toggle is centered | Accepted; the outer positions are a physical lock-out, and an API key is an easy add later |
