@@ -140,3 +140,7 @@ Running log for [plan.md](plan.md). Newest entries at the bottom of each section
 - **The socket is now closed after `KEY_POWER`.** The TV went dark without
   closing it, so the board still showed `connected` and would have "sent"
   later keys into nothing.
+- **Faster menu macro:** 0.7 s for the menu to open, 0.3 s between keys, and
+  3 Ups instead of 4 (2 reach TV from PC, plus 1 spare). Lever switches now
+  take 1.9 s for HDMI 1 and 2.2 s for HDMI 2, down from about 3.5 s and 4.0 s.
+  The user watched both directions land on the TV with the menu closed.

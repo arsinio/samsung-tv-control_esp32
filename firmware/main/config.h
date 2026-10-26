@@ -45,10 +45,11 @@
 #define TV_WAKE_TIMEOUT_MS     45000   // after WOL, wait this long for the TV to come up
 #define TV_WAKE_SETTLE_MS      1500    // after it connects, before the input macro
 
-// Source-menu macro: KEY_SOURCE, Up x MENU_MAX_ROWS, Down x N, Enter
-#define MENU_MAX_ROWS          4
-#define MENU_OPEN_DELAY_MS     1000
-#define MENU_KEY_DELAY_MS      500
+// Source-menu macro: KEY_SOURCE, Up x MENU_MAX_ROWS, Down x N, Enter.
+// The input column is TV, HDMI 1, PC (HDMI 2): 2 Ups always reach TV, 1 spare.
+#define MENU_MAX_ROWS          3
+#define MENU_OPEN_DELAY_MS     700
+#define MENU_KEY_DELAY_MS      300
 
 // Fallback macro: KEY_TV, then KEY_HDMI x N (passes through tuner static).
 // Uncomment to use it instead of the Source menu.
