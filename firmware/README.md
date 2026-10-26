@@ -11,28 +11,7 @@ The design is in [docs/plans/02_esp32/plan.md](../docs/plans/02_esp32/plan.md).
 
 ## Wiring
 
-```
-USB-serial (3.3 V)     WT32-ETH01
-  TX  ───────────────► RX0       (not RXD: see below)
-  RX  ◄─────────────── TX0       (not TXD)
-  DTR ───────────────► IO0       auto-reset adapter: DTR/RTS put it in download mode
-  RTS ───────────────► EN
-  GND ──────────────── GND
-
-5 V supply ─────────── 5V, GND   (its own supply, not the TV's USB port)
-
-ON-OFF-ON toggle       WT32-ETH01
-  common ───────────── GND
-  throw A ──────────── IO32      (HDMI 1)
-  throw B ──────────── IO33      (HDMI 2)
-                                 center = API
-
-Momentary button       WT32-ETH01
-  one side ─────────── IO4       (power)
-  other side ───────── GND
-
-Ethernet jack ──────── TV (direct cable)
-```
+![Wiring: 5 V supply, USB-serial adapter, toggle and button to the WT32-ETH01; Ethernet to the TV](../docs/images/wiring.svg)
 
 - **Power:** use a separate 5 V supply. The TV cuts its USB power in standby,
   which takes the board down too, so the power button could never turn the TV

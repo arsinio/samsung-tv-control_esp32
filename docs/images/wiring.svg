@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" width="1000" height="620" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Monitor Control wiring: WT32-ETH01, power, USB-serial adapter, toggle, button and TV</title>
+  <defs>
+    <style>
+      .card   { fill: #ffffff; stroke: #d0d7de; }
+      .block  { fill: #f6f8fa; stroke: #8c959f; stroke-width: 1.5; }
+      .title  { font-size: 15px; font-weight: 600; fill: #1f2328; }
+      .sub    { font-size: 12px; fill: #59636e; }
+      .term   { font-size: 12px; font-weight: 600; fill: #1f2328; }
+      .pin    { fill: #d4a72c; stroke: #7d5f00; stroke-width: 1; }
+      .pinlbl { font-size: 12px; font-weight: 600; fill: #ffffff; }
+      .silk   { font-size: 10px; fill: #b7e4c7; }
+      .wire   { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .wlbl   { font-size: 11px; fill: #59636e; }
+      .note   { font-size: 12.5px; fill: #1f2328; }
+      .dot    { fill: #1f2328; }
+    </style>
+  </defs>
+
+  <rect class="card" x="0.5" y="0.5" width="999" height="619" rx="12"/>
+
+  <!-- ================= WT32-ETH01 ================= -->
+  <rect x="380" y="70" width="240" height="440" rx="10" fill="#14532d" stroke="#0b2e19" stroke-width="2"/>
+  <text x="500" y="100" text-anchor="middle" font-size="17" font-weight="700" fill="#ffffff">WT32-ETH01</text>
+  <text x="500" y="118" text-anchor="middle" font-size="11.5" fill="#b7e4c7">ESP32 + LAN8720 Ethernet</text>
+  <!-- ESP32 module can -->
+  <rect x="445" y="420" width="110" height="70" rx="4" fill="#c9ced6" stroke="#8c959f"/>
+  <text x="500" y="460" text-anchor="middle" font-size="12" font-weight="600" fill="#424a53">ESP32</text>
+  <!-- RJ45 jack -->
+  <rect x="575" y="140" width="70" height="70" rx="4" fill="#d0d7de" stroke="#6e7781" stroke-width="1.5"/>
+  <rect x="590" y="160" width="40" height="32" rx="2" fill="#57606a"/>
+  <text x="596" y="226" text-anchor="middle" font-size="10" fill="#b7e4c7">RJ45</text>
+
+  <!-- left pins -->
+  <g>
+    <rect class="pin" x="374" y="144" width="12" height="12" rx="2"/><text class="pinlbl" x="396" y="154">5V</text>
+    <rect class="pin" x="374" y="179" width="12" height="12" rx="2"/><text class="pinlbl" x="396" y="189">GND</text>
+    <rect class="pin" x="374" y="269" width="12" height="12" rx="2"/><text class="pinlbl" x="396" y="279">TX0</text>
+    <rect class="pin" x="374" y="299" width="12" height="12" rx="2"/><text class="pinlbl" x="396" y="309">RX0</text>
+    <rect class="pin" x="374" y="329" width="12" height="12" rx="2"/><text class="pinlbl" x="396" y="339">IO0</text>
+    <rect class="pin" x="374" y="359" width="12" height="12" rx="2"/><text class="pinlbl" x="396" y="369">EN</text>
+    <rect class="pin" x="374" y="389" width="12" height="12" rx="2"/><text class="pinlbl" x="396" y="399">GND</text>
+  </g>
+  <!-- right pins -->
+  <g>
+    <rect class="pin" x="614" y="294" width="12" height="12" rx="2"/>
+    <text class="pinlbl" x="604" y="304" text-anchor="end">IO32</text><text class="silk" x="604" y="317" text-anchor="end">silkscreen “CFG”</text>
+    <rect class="pin" x="614" y="339" width="12" height="12" rx="2"/>
+    <text class="pinlbl" x="604" y="349" text-anchor="end">IO33</text><text class="silk" x="604" y="362" text-anchor="end">silkscreen “485_EN”</text>
+    <rect class="pin" x="614" y="389" width="12" height="12" rx="2"/>
+    <text class="pinlbl" x="604" y="399" text-anchor="end">GND</text>
+    <rect class="pin" x="614" y="444" width="12" height="12" rx="2"/>
+    <text class="pinlbl" x="604" y="454" text-anchor="end">IO4</text>
+  </g>
+
+  <!-- ================= 5 V supply ================= -->
+  <rect class="block" x="60" y="110" width="180" height="96" rx="8"/>
+  <text class="title" x="76" y="134">5 V supply</text>
+  <text class="sub" x="76" y="152">not the TV’s USB</text>
+  <text class="term" x="228" y="154" text-anchor="end">+5V</text>
+  <text class="term" x="228" y="189" text-anchor="end">GND</text>
+  <path class="wire" d="M240 150 H374" stroke="#cf222e"/>
+  <path class="wire" d="M240 185 H374" stroke="#1f2328"/>
+
+  <!-- ================= USB-serial adapter ================= -->
+  <rect class="block" x="60" y="226" width="180" height="190" rx="8"/>
+  <text class="title" x="76" y="250">USB-serial adapter</text>
+  <text class="sub" x="76" y="266">3.3 V logic</text>
+  <text class="term" x="228" y="279" text-anchor="end">RX</text>
+  <text class="term" x="228" y="309" text-anchor="end">TX</text>
+  <text class="term" x="228" y="339" text-anchor="end">DTR</text>
+  <text class="term" x="228" y="369" text-anchor="end">RTS</text>
+  <text class="term" x="228" y="399" text-anchor="end">GND</text>
+  <path class="wire" d="M240 275 H374" stroke="#0969da"/>
+  <path class="wire" d="M240 305 H374" stroke="#1a7f37"/>
+  <path class="wire" d="M240 335 H374" stroke="#8250df"/>
+  <path class="wire" d="M240 365 H374" stroke="#bc4c00"/>
+  <path class="wire" d="M240 395 H374" stroke="#1f2328"/>
+  <text class="wlbl" x="306" y="270" text-anchor="middle">board TX → adapter RX</text>
+  <text class="wlbl" x="306" y="330" text-anchor="middle">auto-reset into</text>
+  <text class="wlbl" x="306" y="360" text-anchor="middle">download mode</text>
+
+  <!-- ================= TV ================= -->
+  <rect x="770" y="96" width="180" height="112" rx="6" fill="#1f2328"/>
+  <rect x="780" y="106" width="160" height="88" rx="2" fill="#30363d"/>
+  <text x="860" y="148" text-anchor="middle" font-size="14" font-weight="600" fill="#ffffff">Samsung Q7F</text>
+  <text x="860" y="166" text-anchor="middle" font-size="11" fill="#8c959f">network: automatic (DHCP)</text>
+  <rect x="845" y="208" width="30" height="10" fill="#1f2328"/>
+  <rect x="820" y="218" width="80" height="6" rx="3" fill="#1f2328"/>
+  <path d="M645 176 H770" fill="none" stroke="#6e7781" stroke-width="7" stroke-linecap="round"/>
+  <text class="wlbl" x="708" y="166" text-anchor="middle">Ethernet, direct</text>
+
+  <!-- ================= Toggle ================= -->
+  <rect class="block" x="740" y="270" width="210" height="110" rx="8"/>
+  <text class="title" x="756" y="292">ON-OFF-ON toggle</text>
+  <text class="term" x="754" y="305">A <tspan class="sub" font-weight="400">HDMI 1</tspan></text>
+  <text class="term" x="754" y="350">B <tspan class="sub" font-weight="400">HDMI 2</tspan></text>
+  <text class="term" x="808" y="374">C <tspan class="sub" font-weight="400">common</tspan></text>
+  <!-- lever icon -->
+  <g transform="translate(895 330)">
+    <rect x="-22" y="-34" width="44" height="68" rx="8" fill="#ffffff" stroke="#8c959f"/>
+    <circle cx="0" cy="0" r="6" fill="#57606a"/>
+    <path d="M0 0 L0 -26" stroke="#57606a" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="0" cy="-27" r="5" fill="#57606a"/>
+  </g>
+  <text class="sub" x="866" y="334" text-anchor="end">center: API</text>
+  <path class="wire" d="M626 300 H740" stroke="#bf8700"/>
+  <path class="wire" d="M626 345 H740" stroke="#1b7c83"/>
+
+  <!-- ================= Button ================= -->
+  <rect class="block" x="740" y="414" width="210" height="96" rx="8"/>
+  <text class="title" x="756" y="466">Push button</text>
+  <text class="sub" x="756" y="484">momentary · power</text>
+  <g transform="translate(905 470)">
+    <circle cx="0" cy="0" r="20" fill="#ffffff" stroke="#8c959f"/>
+    <circle cx="0" cy="0" r="12" fill="#cf222e"/>
+  </g>
+  <path class="wire" d="M626 450 H740" stroke="#bf3989"/>
+
+  <!-- shared GND for toggle common and button -->
+  <path class="wire" d="M626 395 H850 V414" stroke="#1f2328"/>
+  <path class="wire" d="M800 395 V380" stroke="#1f2328"/>
+  <circle class="dot" cx="800" cy="395" r="4"/>
+  <text class="wlbl" x="683" y="388" text-anchor="middle">GND</text>
+  <text class="wlbl" x="683" y="293" text-anchor="middle">GPIO32</text>
+  <text class="wlbl" x="683" y="338" text-anchor="middle">GPIO33</text>
+  <text class="wlbl" x="683" y="443" text-anchor="middle">GPIO4</text>
+
+  <!-- ================= Notes ================= -->
+  <line x1="40" y1="540" x2="960" y2="540" stroke="#d0d7de"/>
+  <text class="note" x="40" y="566">• Use <tspan font-weight="600">TX0 / RX0</tspan>. The pins labelled TXD / RXD are the factory AT firmware’s port; flashing never connects there.</text>
+  <text class="note" x="40" y="588">• No resistors: the firmware enables the internal pull-ups on IO32, IO33 and IO4. Share GND between everything.</text>
+  <text class="note" x="40" y="610">• Pins are grouped by function here, not in their physical order on the header.</text>
+</svg>

@@ -7,12 +7,39 @@ It runs on a **WT32-ETH01** (ESP32 + Ethernet). The TV is cabled straight to the
 board's Ethernet port, on a private link with no route to your network. The
 board joins your Wi-Fi to serve the API.
 
-```
- phone / laptop ──Wi-Fi──► WT32-ETH01 ──Ethernet──► Samsung TV
-   http://monitor-control.local      ├─ DHCP server for the TV (192.168.77.10)
-                                     ├─ remote-control WebSocket (wss://…:8002)
-   toggle: HDMI 1 / API / HDMI 2 ───►│
-   power button ────────────────────►│
+```mermaid
+flowchart LR
+    subgraph controls["You"]
+        direction TB
+        client(["Phone / laptop<br/><small>monitor-control.local</small>"])
+        toggle{{"Toggle<br/>HDMI 1 · API · HDMI 2"}}
+        button{{"Power button"}}
+    end
+
+    subgraph board["WT32-ETH01"]
+        direction TB
+        wifi["Wi-Fi + mDNS"]
+        api["REST API<br/>+ status page"]
+        tv["TV client<br/><small>command queue, latest wins</small>"]
+        eth["Ethernet<br/><small>DHCP server · Wake-on-LAN</small>"]
+        wifi --> api
+    end
+
+    subgraph samsung["Samsung Q7F"]
+        direction TB
+        remote["Remote control<br/><small>wss :8002</small>"]
+        info["Device info<br/><small>http :8001</small>"]
+        nic["Network port"]
+    end
+
+    client -- "HTTP" --> wifi
+    api -- "input · key · power · pair" --> tv
+    toggle -- "HDMI 1 / 2" --> tv
+    button -- "power" --> tv
+    tv -- "remote keys" --> remote
+    tv -- "PowerState" --> info
+    tv -- "wake" --> eth
+    eth -- "lease 192.168.77.10<br/>magic packet" --> nic
 ```
 
 ## What it does
@@ -34,6 +61,9 @@ worked out.
 
 1. **Wire it up and flash it:** follow [firmware/README.md](firmware/README.md).
    Power the board from its own 5 V supply, not the TV's USB port.
+
+   ![Wiring: 5 V supply, USB-serial adapter, toggle and button to the WT32-ETH01; Ethernet to the TV](docs/images/wiring.svg)
+
 2. **Set the TV's network to automatic (DHCP)** and cable it to the board.
 3. **Pair once:** flip the toggle (or `POST /api/pair`) and accept the prompt
    on the TV.
