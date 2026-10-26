@@ -91,7 +91,6 @@ void switch_start(void)
 
     xTaskCreate(switch_task, "switch", 3072, NULL, 6, &s_task);
 
-    ESP_ERROR_CHECK(gpio_install_isr_service(0));
     ESP_ERROR_CHECK(gpio_isr_handler_add(SWITCH_HDMI1_GPIO, on_edge, NULL));
     ESP_ERROR_CHECK(gpio_isr_handler_add(SWITCH_HDMI2_GPIO, on_edge, NULL));
 }

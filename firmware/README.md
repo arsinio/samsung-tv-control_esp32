@@ -5,6 +5,7 @@ ESP-IDF firmware that replaces `poc/`. It:
 - **Serves DHCP to the TV** on Ethernet: `192.168.77.10`, no router, isolated from Wi-Fi.
 - **Joins Wi-Fi** and serves a REST API and status page at `http://monitor-control.local/`.
 - **Reads a 3-position toggle:** HDMI 1 / API / HDMI 2.
+- **Has a power button** that toggles the TV: `KEY_POWER` when on, Wake-on-LAN when off.
 
 The design is in [docs/plans/02_esp32/plan.md](../docs/plans/02_esp32/plan.md).
 
@@ -25,8 +26,16 @@ ON-OFF-ON toggle       WT32-ETH01
   throw B ──────────── IO33      (HDMI 2)
                                  center = API
 
+Momentary button       WT32-ETH01
+  one side ─────────── IO4       (power)
+  other side ───────── GND
+
 Ethernet jack ──────── TV (direct cable)
 ```
+
+Power the board from its own 5 V supply, **not the TV's USB port**: the TV cuts
+USB power in standby, which takes the board down with it, so the power button
+could never turn the TV back on.
 
 Use **`TX0`/`RX0`** (GPIO1/GPIO3). The pins labelled `TXD`/`RXD` (GPIO17/GPIO5)
 are the factory AT firmware's command port. On them you'll see `Module OK` and
@@ -68,6 +77,7 @@ switch also triggers the prompt.
 | `POST /api/input/1`, `POST /api/input/2` | Switch input; `202`, or `409` when the toggle isn't centered |
 | `POST /api/key/KEY_NAME` | Send one remote key (e.g. `KEY_VOLUP`); `409` when locked |
 | `POST /api/pair` | Forget the token and pair again (any mode) |
+| `POST /api/power` | Toggle TV power, like the button (any mode) |
 | `GET /` | Status page with buttons |
 
 ```bash
@@ -88,6 +98,15 @@ its actual input. Requests arriving over the TV link get `403`.
 At boot, the position sets the lock but sends nothing, so a power blip never
 changes the input. If both throws ever read closed, the mode is `fault`
 (locked, no action).
+
+## Power button
+
+One press toggles power. The board asks the TV for its `PowerState`
+(`http://192.168.77.10:8001/api/v2/`). If the TV is on, it sends `KEY_POWER`.
+If it's in standby or not answering, it sends Wake-on-LAN to the TV's MAC, which
+is kept in flash from the last lease. A press counts after 30 ms held low, and
+another can only count after a clean release. It works in every toggle position.
+`tv.power` in the status is refreshed every 30 s (`waking` right after a wake).
 
 ## Tuning
 

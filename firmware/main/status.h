@@ -14,6 +14,7 @@ typedef enum {
 typedef enum {
     SRC_SWITCH,
     SRC_API,
+    SRC_BUTTON,
 } cmd_source_t;
 
 typedef struct {
@@ -26,10 +27,12 @@ typedef struct {
     bool dhcp_rogue;         // another DHCP server answered on the TV link
     bool subnet_conflict;    // Wi-Fi subnet overlaps the TV link
     bool tv_leased;          // a lease was handed out since boot
+    bool tv_mac_known;       // from a lease, now or before (kept in NVS)
     uint8_t tv_mac[6];
 
     bool tv_connected;
     bool tv_paired;          // a token is stored
+    char tv_power[12];       // "on", "standby", "off" or "unknown", from the last check
 
     bool wifi_connected;
     char wifi_ip[16];

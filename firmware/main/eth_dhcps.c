@@ -23,6 +23,7 @@
 #include "esp_random.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "nvs.h"
 #include "status.h"
 
 static const char *TAG = "eth";
@@ -31,6 +32,9 @@ static const char *TAG = "eth";
 #define EV_LINK_DOWN BIT1
 #define EV_ROGUE     BIT2
 #define EV_RECHECK   BIT3
+
+#define NVS_NAMESPACE   "eth"
+#define NVS_TV_MAC_KEY  "tv_mac"
 
 static esp_eth_handle_t s_eth;
 static esp_netif_t *s_netif;
@@ -119,6 +123,39 @@ static size_t build_discover(uint8_t *f, uint32_t xid)
     *o++ = 255;
 
     return ETH_HDR + IP_HDR + UDP_HDR + BOOTP_LEN;
+}
+
+// UDP broadcast to port 9: 6 x 0xff then the target MAC 16 times.
+static size_t build_wol(uint8_t *f, const uint8_t *target)
+{
+    const int payload = 6 + 16 * 6;
+    memset(f, 0, ETH_HDR + IP_HDR + UDP_HDR + payload);
+
+    memset(f, 0xff, 6);
+    memcpy(f + 6, s_mac, 6);
+    put16(f + 12, 0x0800);
+
+    uint8_t *ip = f + ETH_HDR;
+    ip[0] = 0x45;
+    put16(ip + 2, IP_HDR + UDP_HDR + payload);
+    put16(ip + 4, esp_random());
+    ip[8] = 64;
+    ip[9] = 17;
+    memcpy(ip + 12, &s_ip_info.ip.addr, 4);  // already network order
+    memset(ip + 16, 0xff, 4);
+    put16(ip + 10, ip_checksum(ip, IP_HDR));
+
+    uint8_t *udp = ip + IP_HDR;
+    put16(udp, 9);
+    put16(udp + 2, 9);
+    put16(udp + 4, UDP_HDR + payload);
+
+    uint8_t *m = udp + UDP_HDR;
+    memset(m, 0xff, 6);
+    for (int i = 0; i < 16; i++) {
+        memcpy(m + 6 + i * 6, target, 6);
+    }
+    return ETH_HDR + IP_HDR + UDP_HDR + payload;
 }
 
 // Replaces the netif glue's input path: inspect, then hand the frame to lwIP.
@@ -254,9 +291,59 @@ static void on_lease(void *arg, esp_event_base_t base, int32_t id, void *data)
     }
 
     status_t *st = status_lock();
+    bool changed = !st->tv_mac_known || memcmp(st->tv_mac, ev->mac, 6) != 0;
     st->tv_leased = true;
+    st->tv_mac_known = true;
     memcpy(st->tv_mac, ev->mac, 6);
     status_unlock();
+
+    // Remember it for Wake-on-LAN after a reboot (the TV may not re-lease)
+    nvs_handle_t nvs;
+    if (changed && nvs_open(NVS_NAMESPACE, NVS_READWRITE, &nvs) == ESP_OK) {
+        nvs_set_blob(nvs, NVS_TV_MAC_KEY, ev->mac, 6);
+        nvs_commit(nvs);
+        nvs_close(nvs);
+    }
+}
+
+static void load_tv_mac(void)
+{
+    nvs_handle_t nvs;
+    uint8_t mac[6];
+    size_t len = sizeof(mac);
+    if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &nvs) != ESP_OK) {
+        return;
+    }
+    if (nvs_get_blob(nvs, NVS_TV_MAC_KEY, mac, &len) == ESP_OK && len == 6) {
+        status_t *st = status_lock();
+        st->tv_mac_known = true;
+        memcpy(st->tv_mac, mac, 6);
+        status_unlock();
+        ESP_LOGI(TAG, "TV MAC " MACSTR " (from NVS)", MAC2STR(mac));
+    }
+    nvs_close(nvs);
+}
+
+esp_err_t eth_dhcps_send_wol(void)
+{
+    static uint8_t frame[ETH_HDR + IP_HDR + UDP_HDR + 6 + 16 * 6];
+    uint8_t mac[6];
+    status_t *st = status_lock();
+    bool known = st->tv_mac_known;
+    memcpy(mac, st->tv_mac, 6);
+    status_unlock();
+    if (!known) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    size_t len = build_wol(frame, mac);
+    esp_err_t err = ESP_OK;
+    for (int i = 0; i < WOL_REPEAT; i++) {
+        err = esp_eth_transmit(s_eth, frame, len);
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+    ESP_LOGI(TAG, "Wake-on-LAN sent to " MACSTR " (%s)", MAC2STR(mac), esp_err_to_name(err));
+    return err;
 }
 
 void eth_dhcps_set_wifi_subnet(esp_ip4_addr_t ip, esp_ip4_addr_t netmask)
@@ -349,6 +436,7 @@ static esp_eth_handle_t install_driver(void)
 void eth_dhcps_start(void)
 {
     xTaskCreate(eth_task, "eth_dhcps", 4096, NULL, 5, &s_task);
+    load_tv_mac();
 
     s_eth = install_driver();
     ESP_ERROR_CHECK(esp_eth_ioctl(s_eth, ETH_CMD_G_MAC_ADDR, s_mac));

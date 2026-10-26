@@ -1,7 +1,9 @@
 // Monitor Control for the WT32-ETH01: DHCP server for the TV on Ethernet,
-// REST API on Wi-Fi, and a 3-position HDMI 1 / API / HDMI 2 toggle.
+// REST API on Wi-Fi, a 3-position HDMI 1 / API / HDMI 2 toggle, and a power button.
 
 #include "api.h"
+#include "button.h"
+#include "driver/gpio.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_netif.h"
@@ -26,9 +28,11 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     status_init();
+    ESP_ERROR_CHECK(gpio_install_isr_service(0));  // shared by the switch and button
     tv_start();
     // The switch decides the mode before anything can accept API requests
     switch_start();
+    button_start();
     eth_dhcps_start();
     wifi_start();
     api_start();

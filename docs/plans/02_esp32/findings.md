@@ -105,3 +105,27 @@ Running log for [plan.md](plan.md). Newest entries at the bottom of each section
 - **Not tested:** the rogue-server guard (it needs the Ethernet on a real
   LAN), and isolation from the TV side. It's guaranteed by config (no router
   offered, forwarding off), but nothing was probed from the TV.
+
+## Power button (2026-10-26)
+
+- Added a momentary button on **GPIO4** (to GND, internal pull-up) and
+  `POST /api/power`. Both work in any toggle mode. The command reads
+  `PowerState` from `:8001/api/v2/`. If the TV is on, it sends `KEY_POWER`.
+  Otherwise it sends Wake-on-LAN: UDP broadcast to port 9, 3 packets, built as
+  raw frames on the TV link. The TV's MAC is persisted in NVS from leases.
+- **Powering the board from the TV's USB port doesn't work:** the TV cuts USB
+  power in standby, and the board died silently right after `KEY_POWER`. With
+  a separate 5 V supply, it's fine.
+- **Verified via the API:**
+  - `KEY_POWER`: TV off in 46 ms. `PowerState` read `standby` at once, then
+    `off` (the REST endpoint stops answering) within about 35 s.
+  - Wake-on-LAN from `off`: the TV re-requested its lease 1 s after the magic
+    packets, and was `on` by the next 30 s check. The TV keeps its Ethernet
+    link up in standby, which is what makes WOL work.
+  - The TV MAC was loaded from NVS after a reboot.
+- `tv.power` is refreshed on the 30 s idle tick. It reads `waking` right after
+  a WOL. The background reconnect only runs when the TV is on.
+- **Not verified:** the physical button's debounce. Nothing is wired to GPIO4
+  yet; it uses the same press/release code path as the API command.
+- The GPIO ISR service is now installed once in `app_main`, which removes an
+  `E` "already installed" log line.

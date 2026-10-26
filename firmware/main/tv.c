@@ -11,7 +11,9 @@
 
 #include "cJSON.h"
 #include "config.h"
+#include "esp_http_client.h"
 #include "esp_log.h"
+#include "eth_dhcps.h"
 #include "esp_timer.h"
 #include "esp_websocket_client.h"
 #include "freertos/FreeRTOS.h"
@@ -29,7 +31,7 @@ static const char *TAG = "tv";
 #define BIT_UNAUTHORIZED    BIT1  // ms.channel.unauthorized received
 #define BIT_CLOSED          BIT2  // transport closed or failed
 
-typedef enum { CMD_INPUT, CMD_KEY, CMD_PAIR } cmd_type_t;
+typedef enum { CMD_INPUT, CMD_KEY, CMD_PAIR, CMD_POWER } cmd_type_t;
 
 typedef struct {
     cmd_type_t type;
@@ -320,6 +322,68 @@ static const char *run_steps(const step_t *steps, int n)
     return "ok";
 }
 
+// --- Power ----------------------------------------------------------------
+
+static void set_power(const char *state)
+{
+    status_t *st = status_lock();
+    strlcpy(st->tv_power, state, sizeof(st->tv_power));
+    status_unlock();
+}
+
+// Reads PowerState from http://TV_IP:8001/api/v2/: "on", "standby", or "off"
+// when the TV doesn't answer at all. Also refreshed on every idle tick.
+static const char *query_power(void)
+{
+    static char body[4096];
+    char url[64];
+    snprintf(url, sizeof(url), "http://%s:%d/api/v2/", TV_IP, TV_REST_PORT);
+
+    esp_http_client_config_t cfg = {.url = url, .timeout_ms = TV_POWER_QUERY_MS};
+    esp_http_client_handle_t http = esp_http_client_init(&cfg);
+    const char *state = "off";
+    if (esp_http_client_open(http, 0) == ESP_OK && esp_http_client_fetch_headers(http) >= 0) {
+        int len = 0, n;
+        while (len < (int)sizeof(body) - 1 &&
+               (n = esp_http_client_read(http, body + len, sizeof(body) - 1 - len)) > 0) {
+            len += n;
+        }
+        body[len] = '\0';
+        cJSON *root = cJSON_Parse(body);
+        const cJSON *ps = cJSON_GetObjectItem(cJSON_GetObjectItem(root, "device"), "PowerState");
+        state = cJSON_IsString(ps) && strcmp(ps->valuestring, "on") == 0 ? "on" : "standby";
+        cJSON_Delete(root);
+    }
+    esp_http_client_cleanup(http);
+    return state;
+}
+
+static const char *run_power(void)
+{
+    const char *state = query_power();
+    ESP_LOGI(TAG, "TV power state: %s", state);
+    set_power(state);
+
+    if (strcmp(state, "on") == 0) {
+        step_t step = {"KEY_POWER", 0};
+        const char *r = run_steps(&step, 1);
+        if (strcmp(r, "ok") == 0) {
+            set_power("standby");
+            return "off (KEY_POWER)";
+        }
+        return r;
+    }
+    esp_err_t err = eth_dhcps_send_wol();
+    if (err == ESP_ERR_INVALID_STATE) {
+        return "no TV MAC yet";
+    }
+    if (err != ESP_OK) {
+        return "WOL send failed";
+    }
+    set_power("waking");  // until the next background check sees it on
+    return "wake (WOL)";
+}
+
 static void run_command(const tv_cmd_t *cmd)
 {
     char what[24];
@@ -342,6 +406,9 @@ static void run_command(const tv_cmd_t *cmd)
         snprintf(what, sizeof(what), "key %.19s", cmd->key);
         step_t step = {cmd->key, 0};
         result = run_steps(&step, 1);
+    } else if (cmd->type == CMD_POWER) {
+        strlcpy(what, "power", sizeof(what));
+        result = run_power();
     } else {
         strlcpy(what, "pair", sizeof(what));
         ws_close();
@@ -364,9 +431,13 @@ static void tv_task(void *arg)
         tv_cmd_t cmd;
         if (xQueueReceive(s_queue, &cmd, pdMS_TO_TICKS(TV_RECONNECT_MS))) {
             run_command(&cmd);
-        } else if (s_token[0] && !ws_is_open()) {
-            // Keep a paired connection warm so switches skip the TLS handshake
-            ws_open(TV_CONNECT_TIMEOUT_MS);
+        } else {
+            const char *power = query_power();
+            set_power(power);
+            if (s_token[0] && !ws_is_open() && strcmp(power, "on") == 0) {
+                // Keep a paired connection warm so switches skip the TLS handshake
+                ws_open(TV_CONNECT_TIMEOUT_MS);
+            }
         }
     }
 }
@@ -394,6 +465,12 @@ void tv_request_key(const char *key, cmd_source_t source)
 void tv_request_pair(cmd_source_t source)
 {
     tv_cmd_t cmd = {.type = CMD_PAIR, .source = source};
+    enqueue(&cmd);
+}
+
+void tv_request_power(cmd_source_t source)
+{
+    tv_cmd_t cmd = {.type = CMD_POWER, .source = source};
     enqueue(&cmd);
 }
 

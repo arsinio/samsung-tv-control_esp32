@@ -7,7 +7,7 @@
 #include "freertos/semphr.h"
 
 static SemaphoreHandle_t s_lock;
-static status_t s_status = {.mode = MODE_API};
+static status_t s_status = {.mode = MODE_API, .tv_power = "unknown"};
 
 static cmd_log_entry_t s_log[CMD_LOG_LEN];
 static int s_log_next;
@@ -47,7 +47,11 @@ const char *status_mode_name(ctl_mode_t mode)
 
 const char *status_source_name(cmd_source_t source)
 {
-    return source == SRC_SWITCH ? "switch" : "api";
+    switch (source) {
+    case SRC_SWITCH: return "switch";
+    case SRC_BUTTON: return "button";
+    default:         return "api";
+    }
 }
 
 void cmd_log_add(cmd_source_t source, const char *what, const char *result, uint32_t duration_ms)

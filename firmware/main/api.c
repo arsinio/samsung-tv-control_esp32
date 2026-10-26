@@ -3,6 +3,7 @@
 // POST /api/input/1|2     switch input (api mode only)
 // POST /api/key/KEY_NAME  raw remote key (api mode only)
 // POST /api/pair          re-pair with the TV (any mode)
+// POST /api/power         toggle TV power (any mode): KEY_POWER or Wake-on-LAN
 // GET  /                  status page
 
 #include "api.h"
@@ -32,11 +33,12 @@ static const char PAGE[] =
     "</style></head><body><h1>Monitor Control</h1>"
     "<p>Mode: <b id=mode>?</b></p>"
     "<button id=b1 onclick=go(1)>HDMI 1</button><button id=b2 onclick=go(2)>HDMI 2</button>"
-    "<p><button onclick=pair()>Pair with TV</button></p><pre id=st></pre><script>"
+    "<p><button onclick=power()>Power</button> <button onclick=pair()>Pair with TV</button></p><pre id=st></pre><script>"
     "async function refresh(){try{const s=await(await fetch('/api/status')).json();"
     "mode.textContent=s.mode+(s.busy?' (busy)':'');"
     "b1.disabled=b2.disabled=s.mode!='api';st.textContent=JSON.stringify(s,null,2)}catch(e){}}"
     "async function go(n){await fetch('/api/input/'+n,{method:'POST'});refresh()}"
+    "async function power(){await fetch('/api/power',{method:'POST'});refresh()}"
     "async function pair(){if(confirm('Re-pair? Accept the prompt on the TV.'))"
     "await fetch('/api/pair',{method:'POST'});refresh()}"
     "refresh();setInterval(refresh,2000)</script></body></html>";
@@ -133,7 +135,7 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     cJSON_AddStringToObject(tv, "ip", TV_IP);
     cJSON_AddBoolToObject(tv, "link", st.eth_link);
     cJSON_AddBoolToObject(tv, "leased", st.tv_leased);
-    if (st.tv_leased) {
+    if (st.tv_mac_known) {
         char mac[18];
         snprintf(mac, sizeof(mac), "%02x:%02x:%02x:%02x:%02x:%02x", st.tv_mac[0], st.tv_mac[1],
                  st.tv_mac[2], st.tv_mac[3], st.tv_mac[4], st.tv_mac[5]);
@@ -141,6 +143,7 @@ static esp_err_t status_get_handler(httpd_req_t *req)
     }
     cJSON_AddBoolToObject(tv, "connected", st.tv_connected);
     cJSON_AddBoolToObject(tv, "paired", st.tv_paired);
+    cJSON_AddStringToObject(tv, "power", st.tv_power);
 
     cJSON *dhcp = cJSON_AddObjectToObject(body, "dhcp");
     cJSON_AddBoolToObject(dhcp, "serving", st.dhcp_serving);
@@ -214,6 +217,13 @@ static esp_err_t key_post(httpd_req_t *req)
     return send_accepted(req, key);
 }
 
+static esp_err_t power_post(httpd_req_t *req)
+{
+    GUARD(req);
+    tv_request_power(SRC_API);
+    return send_accepted(req, "power");
+}
+
 static esp_err_t pair_post(httpd_req_t *req)
 {
     GUARD(req);
@@ -238,6 +248,7 @@ void api_start(void)
         {.uri = "/api/input/*", .method = HTTP_POST, .handler = input_post},
         {.uri = "/api/key/*", .method = HTTP_POST, .handler = key_post},
         {.uri = "/api/pair", .method = HTTP_POST, .handler = pair_post},
+        {.uri = "/api/power", .method = HTTP_POST, .handler = power_post},
     };
     for (size_t i = 0; i < sizeof(routes) / sizeof(routes[0]); i++) {
         ESP_ERROR_CHECK(httpd_register_uri_handler(server, &routes[i]));
