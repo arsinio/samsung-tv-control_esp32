@@ -84,3 +84,24 @@ Running log for [plan.md](plan.md). Newest entries at the bottom of each section
   bounce. The first switch took 8.1 s, including the pairing wait. The second
   took 4.0 s, reusing the open connection with no new handshake: 1 s menu open,
   then 0.5 s per key, matching the Source-menu timing from the PoC.
+- **Wi-Fi + API verified** on the home Wi-Fi (192.168.1.214, RSSI -52, no subnet
+  conflict). The pairing token survived a reflash, since NVS isn't erased by `flash`.
+- **mDNS AAAA stall, fixed.** The board answered only A queries, so every
+  `.local` lookup from macOS (curl, and browsers too) waited about 5 s for the
+  AAAA answer. `curl -4` was instant. The board now creates an IPv6 link-local
+  address on Wi-Fi connect, so mDNS answers AAAA. Lookups take about 10 ms and
+  requests about 30 ms, and clients now connect over `fe80::…`.
+- **API switching:** `POST /api/input/2` then `/1` returned `202`, and both
+  ran OK (4.0 s, 3.5 s). Raw keys took about 10 ms on the open connection.
+  Validation works: bad input → `404`, malformed key → `400`, wrong method → `405`.
+- **Lockout verified:** the lever went to `hdmi1`, and the TV switched in 3.5 s.
+  `POST /api/input/1` and `/api/key/KEY_INFO` both returned
+  `409 {"error":"locked","mode":"hdmi1"}`. Back at center, the mode returned to
+  `api`.
+- **Reboot survival verified:** after a reset the device stayed paired, read
+  the lever without switching, served the TV its lease again (`.10` about 6 s
+  after boot), and reconnected to the TV at about 31 s (the first background
+  reconnect tick) with no prompt.
+- **Not tested:** the rogue-server guard (it needs the Ethernet on a real
+  LAN), and isolation from the TV side. It's guaranteed by config (no router
+  offered, forwarding off), but nothing was probed from the TV.

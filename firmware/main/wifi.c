@@ -19,6 +19,7 @@ static const char *TAG = "wifi";
 #define RETRY_MIN_MS 1000
 #define RETRY_MAX_MS 30000
 
+static esp_netif_t *s_netif;
 static TimerHandle_t s_retry_timer;
 static uint32_t s_retry_ms = RETRY_MIN_MS;
 
@@ -31,6 +32,10 @@ static void on_wifi_event(void *arg, esp_event_base_t base, int32_t id, void *da
 {
     if (id == WIFI_EVENT_STA_START) {
         esp_wifi_connect();
+    } else if (id == WIFI_EVENT_STA_CONNECTED) {
+        // Without an IPv6 address mDNS can't answer AAAA queries, and clients
+        // (curl, browsers) stall ~5 s waiting for one on every .local lookup
+        esp_netif_create_ip6_linklocal(s_netif);
     } else if (id == WIFI_EVENT_STA_DISCONNECTED) {
         wifi_event_sta_disconnected_t *ev = data;
         ESP_LOGW(TAG, "disconnected (reason %d); retrying in %lu ms", ev->reason, (unsigned long)s_retry_ms);
@@ -68,8 +73,8 @@ static void start_mdns(void)
 
 void wifi_start(void)
 {
-    esp_netif_t *netif = esp_netif_create_default_wifi_sta();
-    esp_netif_set_hostname(netif, MDNS_HOSTNAME);
+    s_netif = esp_netif_create_default_wifi_sta();
+    esp_netif_set_hostname(s_netif, MDNS_HOSTNAME);
 
     wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&init));

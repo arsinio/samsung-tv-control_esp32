@@ -28,8 +28,13 @@ ON-OFF-ON toggle       WT32-ETH01
 Ethernet jack ──────── TV (direct cable)
 ```
 
-The board has no USB port or auto-reset circuit. To flash, jumper IO0 to GND,
-power-cycle or tap EN/RST, flash, then remove the jumper and reset again.
+Use **`TX0`/`RX0`** (GPIO1/GPIO3). The pins labelled `TXD`/`RXD` (GPIO17/GPIO5)
+are the factory AT firmware's command port. On them you'll see `Module OK` and
+AT replies, but flashing never connects.
+
+The board has no USB port or auto-reset circuit. With an adapter that drives
+DTR→IO0 and RTS→EN (like a dev kit), `flash` just works. Otherwise, jumper IO0
+to GND, reset, flash, then remove the jumper and reset again.
 
 ## Build and flash
 
@@ -112,3 +117,6 @@ Work through these in order, watching `./idf.sh monitor`. Record results in
     should log `another DHCP server answered…` and never serve.
 11. **Reboot survival:** power-cycle the board. It stays paired and reconnects
     (`tv: connected to TV` within ~30 s).
+
+All of these except 9 (checked by config only) and 10 passed on 2026-10-26; see
+the findings.
