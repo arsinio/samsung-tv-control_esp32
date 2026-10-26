@@ -42,6 +42,8 @@
 #define TV_REST_PORT           8001    // http://TV_IP:8001/api/v2/ reports PowerState
 #define TV_POWER_QUERY_MS      2000
 #define WOL_REPEAT             3       // magic packets per wake
+#define TV_WAKE_TIMEOUT_MS     45000   // after WOL, wait this long for the TV to come up
+#define TV_WAKE_SETTLE_MS      1500    // after it connects, before the input macro
 
 // Source-menu macro: KEY_SOURCE, Up x MENU_MAX_ROWS, Down x N, Enter
 #define MENU_MAX_ROWS          4

@@ -129,3 +129,14 @@ Running log for [plan.md](plan.md). Newest entries at the bottom of each section
   yet; it uses the same press/release code path as the API command.
 - The GPIO ISR service is now installed once in `app_main`, which removes an
   `E` "already installed" log line.
+- **Switch to the lever's input after a wake.** Once the TV reports `on`
+  and accepts the WebSocket, the board waits 1.5 s (`TV_WAKE_SETTLE_MS`) and
+  runs the Source-menu macro for the lever's input. In `api` mode it does
+  nothing. A command queued meanwhile wins. Verified: TV on HDMI 1 via the API,
+  powered off, lever flipped to HDMI 2 while off (that switch failed cleanly as
+  `unreachable` after 5 s), then woken. It came up on HDMI 1 and moved to
+  HDMI 2: lease at +0.9 s, connected at +2.7 s, done at 10.6 s. Watched on the
+  TV.
+- **The socket is now closed after `KEY_POWER`.** The TV went dark without
+  closing it, so the board still showed `connected` and would have "sent"
+  later keys into nothing.

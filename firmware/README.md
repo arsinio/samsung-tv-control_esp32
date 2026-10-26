@@ -104,7 +104,9 @@ changes the input. If both throws ever read closed, the mode is `fault`
 One press toggles power. The board asks the TV for its `PowerState`
 (`http://192.168.77.10:8001/api/v2/`). If the TV is on, it sends `KEY_POWER`.
 If it's in standby or not answering, it sends Wake-on-LAN to the TV's MAC, which
-is kept in flash from the last lease. A press counts after 30 ms held low, and
+is kept in flash from the last lease. After a wake, once the TV accepts the
+connection, it switches to the lever's input; in API mode it leaves the input
+alone, and a newer command (e.g. a lever flip) skips it. A press counts after 30 ms held low, and
 another can only count after a clean release. It works in every toggle position.
 `tv.power` in the status is refreshed every 30 s (`waking` right after a wake).
 

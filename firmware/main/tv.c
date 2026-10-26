@@ -358,6 +358,57 @@ static const char *query_power(void)
     return state;
 }
 
+// After a wake, put the TV on the lever's input (nothing in API mode). Gives
+// up early if another command is queued: it was asked for later, so it wins.
+static const char *switch_after_wake(void)
+{
+    int64_t t0 = esp_timer_get_time();
+    const char *r = "timeout";
+    while ((esp_timer_get_time() - t0) / 1000 < TV_WAKE_TIMEOUT_MS) {
+        if (uxQueueMessagesWaiting(s_queue)) {
+            return "wake, superseded";
+        }
+        if (strcmp(query_power(), "on") == 0) {
+            set_power("on");
+            r = s_token[0] ? ws_open(TV_CONNECT_TIMEOUT_MS) : "not paired";
+            if (strcmp(r, "ok") == 0) {
+                break;
+            }
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+    uint32_t up_ms = (esp_timer_get_time() - t0) / 1000;
+    if (strcmp(r, "ok") != 0) {
+        ESP_LOGW(TAG, "TV not controllable %lu ms after wake: %s", (unsigned long)up_ms, r);
+        return "wake, no connect";
+    }
+    ESP_LOGI(TAG, "TV up and connected %lu ms after wake", (unsigned long)up_ms);
+
+    ctl_mode_t mode;
+    status_t *st = status_lock();
+    mode = st->mode;
+    status_unlock();
+    if (mode != MODE_HDMI1 && mode != MODE_HDMI2) {
+        return "wake, api mode";
+    }
+    int input = mode == MODE_HDMI1 ? 1 : 2;
+
+    // Freshly booted TVs drop keys for a moment
+    vTaskDelay(pdMS_TO_TICKS(TV_WAKE_SETTLE_MS));
+    if (uxQueueMessagesWaiting(s_queue)) {
+        return "wake, superseded";
+    }
+    step_t steps[MAX_STEPS];
+    int n = build_input_macro(input, steps);
+    r = run_steps(steps, n);
+    if (strcmp(r, "ok") != 0) {
+        return "wake, input failed";
+    }
+    status_lock()->input = input;
+    status_unlock();
+    return input == 1 ? "wake, input 1" : "wake, input 2";
+}
+
 static const char *run_power(void)
 {
     const char *state = query_power();
@@ -368,6 +419,9 @@ static const char *run_power(void)
         step_t step = {"KEY_POWER", 0};
         const char *r = run_steps(&step, 1);
         if (strcmp(r, "ok") == 0) {
+            // The TV goes dark without closing the socket; drop it so later
+            // commands see it as unreachable instead of sending into nothing
+            ws_close();
             set_power("standby");
             return "off (KEY_POWER)";
         }
@@ -381,7 +435,7 @@ static const char *run_power(void)
         return "WOL send failed";
     }
     set_power("waking");  // until the next background check sees it on
-    return "wake (WOL)";
+    return switch_after_wake();
 }
 
 static void run_command(const tv_cmd_t *cmd)
