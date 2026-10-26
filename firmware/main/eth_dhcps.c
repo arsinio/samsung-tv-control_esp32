@@ -192,7 +192,15 @@ static void eth_task(void *arg)
         if (ev & EV_LINK_UP) {
             link = true;
             s_rogue = false;
-            set_serving(false);
+            // Stop unconditionally: the netif glue may have started the server
+            // behind our back (ETHERNET_EVENT_START), so the cached flag can't be trusted
+            esp_netif_dhcp_status_t was = ESP_NETIF_DHCP_INIT;
+            esp_netif_dhcps_get_status(s_netif, &was);
+            esp_netif_dhcps_stop(s_netif);
+            status_lock()->dhcp_serving = false;
+            status_unlock();
+            ESP_LOGI(TAG, "DHCP server held for probe (was %s)",
+                     was == ESP_NETIF_DHCP_STARTED ? "started" : was == ESP_NETIF_DHCP_STOPPED ? "stopped" : "init");
             probe_for_other_servers();
         }
 
