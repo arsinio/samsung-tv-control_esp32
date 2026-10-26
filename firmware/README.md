@@ -1,6 +1,6 @@
 # Monitor Control firmware (WT32-ETH01)
 
-ESP-IDF firmware that replaces `poc/`. It:
+ESP-IDF firmware for the [Monitor Control](../README.md) box. It:
 
 - **Serves DHCP to the TV** on Ethernet: `192.168.77.10`, no router, isolated from Wi-Fi.
 - **Joins Wi-Fi** and serves a REST API and status page at `http://monitor-control.local/`.
@@ -12,13 +12,14 @@ The design is in [docs/plans/02_esp32/plan.md](../docs/plans/02_esp32/plan.md).
 ## Wiring
 
 ```
-USB-TTL (3.3 V)        WT32-ETH01
-  TX  ───────────────► RX0
-  RX  ◄─────────────── TX0
+USB-serial (3.3 V)     WT32-ETH01
+  TX  ───────────────► RX0       (not RXD: see below)
+  RX  ◄─────────────── TX0       (not TXD)
+  DTR ───────────────► IO0       auto-reset adapter: DTR/RTS put it in download mode
+  RTS ───────────────► EN
   GND ──────────────── GND
-  5V  ──────────────── 5V        (or power the board separately; share GND)
-                       IO0 ──┐   hold to GND while resetting = download mode
-                       GND ──┘
+
+5 V supply ─────────── 5V, GND   (its own supply, not the TV's USB port)
 
 ON-OFF-ON toggle       WT32-ETH01
   common ───────────── GND
@@ -33,17 +34,17 @@ Momentary button       WT32-ETH01
 Ethernet jack ──────── TV (direct cable)
 ```
 
-Power the board from its own 5 V supply, **not the TV's USB port**: the TV cuts
-USB power in standby, which takes the board down with it, so the power button
-could never turn the TV back on.
-
-Use **`TX0`/`RX0`** (GPIO1/GPIO3). The pins labelled `TXD`/`RXD` (GPIO17/GPIO5)
-are the factory AT firmware's command port. On them you'll see `Module OK` and
-AT replies, but flashing never connects.
-
-The board has no USB port or auto-reset circuit. With an adapter that drives
-DTR→IO0 and RTS→EN (like a dev kit), `flash` just works. Otherwise, jumper IO0
-to GND, reset, flash, then remove the jumper and reset again.
+- **Power:** use a separate 5 V supply. The TV cuts its USB power in standby,
+  which takes the board down too, so the power button could never turn the TV
+  back on.
+- **Serial:** use **`TX0`/`RX0`** (GPIO1/GPIO3). The `TXD`/`RXD` pins
+  (GPIO17/GPIO5) are the factory AT firmware's port. On them you'll see
+  `Module OK`, but flashing never connects.
+- **Download mode:** an adapter wired DTR→IO0 and RTS→EN flashes like a dev
+  kit. Without one, hold IO0 to GND while resetting, flash, then release IO0
+  and reset.
+- **The toggle and button need no resistors:** the firmware enables the
+  internal pull-ups.
 
 ## Build and flash
 
@@ -101,20 +102,29 @@ changes the input. If both throws ever read closed, the mode is `fault`
 
 ## Power button
 
-One press toggles power. The board asks the TV for its `PowerState`
-(`http://192.168.77.10:8001/api/v2/`). If the TV is on, it sends `KEY_POWER`.
-If it's in standby or not answering, it sends Wake-on-LAN to the TV's MAC, which
-is kept in flash from the last lease. After a wake, once the TV accepts the
-connection, it switches to the lever's input; in API mode it leaves the input
-alone, and a newer command (e.g. a lever flip) skips it. A press counts after 30 ms held low, and
-another can only count after a clean release. It works in every toggle position.
-`tv.power` in the status is refreshed every 30 s (`waking` right after a wake).
+One press toggles power, in any toggle position:
+
+- The board first reads the TV's `PowerState` (`http://192.168.77.10:8001/api/v2/`).
+- If the TV is **on**, it sends `KEY_POWER`.
+- If the TV is **in standby or not answering**, it sends Wake-on-LAN to the TV's
+  MAC (saved in flash from its last lease). Once the TV is up (about 3 s), the
+  board switches to the toggle's input. It does nothing in API mode, and a newer
+  command takes priority.
+
+A press counts after 30 ms held low, and the next one only after a clean
+release. `tv.power` in the status refreshes every 30 s (`waking` right after
+a wake).
 
 ## Tuning
 
-Everything lives in [main/config.h](main/config.h): pins, subnet, menu timings,
-and `TV_USE_CYCLE_MACRO` to switch from the Source-menu macro to the
-`KEY_TV` + `KEY_HDMI` fallback.
+Everything lives in [main/config.h](main/config.h):
+
+- **Pins and subnet.**
+- **Menu timings:** 0.7 s for the menu to open, 0.3 s per key. Raise them if
+  switches land wrong or leave the menu open.
+- **Wake settle time.**
+- **`TV_USE_CYCLE_MACRO`:** uses the `KEY_TV` + `KEY_HDMI` fallback instead of
+  the Source menu.
 
 ## Bring-up checklist
 
@@ -139,5 +149,5 @@ Work through these in order, watching `./idf.sh monitor`. Record results in
 11. **Reboot survival:** power-cycle the board. It stays paired and reconnects
     (`tv: connected to TV` within ~30 s).
 
-All of these except 9 (checked by config only) and 10 passed on 2026-10-26; see
-the findings.
+All of these except 9 (checked by config only) and 10 passed on 2026-10-26,
+along with the power button via `POST /api/power`. See the findings.

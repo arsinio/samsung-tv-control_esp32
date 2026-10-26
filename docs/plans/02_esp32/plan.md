@@ -1,6 +1,6 @@
 # 02 — ESP32 controller (WT32-ETH01)
 
-**Status:** Implemented, awaiting hardware · **Date:** 2026-10-23 · **Owner:** Christopher Armenio
+**Status:** Implemented and verified on hardware (power button added later; see [findings](findings.md)) · **Date:** 2026-10-23 · **Owner:** Christopher Armenio
 **Builds on:** [01_experimentation](../01_experimentation/plan.md) ([findings](../01_experimentation/findings.md))
 
 ## Goal
